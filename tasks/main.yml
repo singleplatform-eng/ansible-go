@@ -1,25 +1,38 @@
 ---
-- name: Download the Go tarball
-  get_url: url={{ go_download_location }}
-           dest=/usr/local/src/{{ go_tarball }}
-           checksum={{ go_tarball_checksum }}
 
-- name: Register the current Go version (if any)
-  command: /usr/local/go/bin/go version
-  ignore_errors: yes
-  register: go_version
-  changed_when: false
+- name: Check if go is already installed
+  stat: path={{go_root_bin_dir}}/go
+  register: go_installed
+
+# package install
+- name: Install golang apt package
+  apt: name={{go_package_name}}
+       state=present
+       update_cache=yes
+       cache_valid_time=86400
+  when: not go_installed.stat.exists and go_install_method == 'package'
+
+- name: Ensure installation directory exists
+  file: state=directory path={{go_install_dir}}/go
+  when: not go_installed.stat.exists and go_install_method == 'package'
+
+- name: Set symlinks for package install
+  file: state=link src=/usr/lib/go-{{go_version}}/bin dest={{go_root_bin_dir}}
+  when: not go_installed.stat.exists and go_install_method == 'package'
+
+# tar install
+- name: Download the Go tarball
+  get_url: url={{go_download_location}}
+           dest=/usr/local/src/{{go_tarball}}
+           checksum={{go_tarball_checksum}}
+  when: not go_installed.stat.exists and go_install_method == 'tar'
 
 - name: Extract the Go tarball if Go is not yet installed or not the desired version
-  unarchive: src=/usr/local/src/{{ go_tarball }}
-             dest=/usr/local
+  unarchive: src=/usr/local/src/{{go_tarball}}
+             dest={{go_install_dir}}
              copy=no
-  when: go_version|failed or go_version.stdout != go_version_target
+  when: not go_installed.stat.exists and go_install_method == 'tar'
 
-- name: Add the Go bin directory to the PATH environment variable for all users
-  copy: src=go-bin.sh
-        dest=/etc/profile.d
-
-- name: Set GOPATH for all users
-  copy: src=go-path.sh
-        dest=/etc/profile.d
+# set env vars for all users
+- name: Set PATH and GOPATH for all users
+  template: src=go-path.sh.j2 dest=/etc/profile.d/go-path.sh

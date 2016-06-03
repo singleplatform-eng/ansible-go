@@ -1,9 +1,9 @@
 ---
 galaxy_info:
-  author: "Joshua Lund"
+  author: "Joshua Lund w/ heavy modifications by SinglePlatform"
   description: "Ansible role that installs Go (https://golang.org/). The latest stable release that has been compiled for x86 64-bit Linux systems is installed by default, and different platforms and versions are supported by modifying the role variables."
   license: MIT
-  min_ansible_version: 1.3
+  min_ansible_version: 2.0
   platforms:
     - name: EL
       versions:
